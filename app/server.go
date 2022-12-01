@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
-	"time"
 )
 
 const (
@@ -33,16 +33,21 @@ func main() {
 			log.Fatalf("accept connection: %s", err.Error())
 		}
 
-		c.SetReadDeadline(time.Now().Add(10 * time.Second))
-
 		go func() {
-			content := make([]byte, 1024)
-			if _, err := c.Read(content); err != nil {
-				log.Fatalf("read: %s", err.Error())
-			}
 
-			if _, err := c.Write(strb("PONG")); err != nil {
-				log.Fatalf("write: %s", err.Error())
+			for {
+				buf := make([]byte, 1024)
+				if _, err := c.Read(buf); err != nil {
+					if err == io.EOF {
+						break
+					}
+
+					log.Fatalf("read: %s", err.Error())
+				}
+
+				if _, err := c.Write(strb("PONG")); err != nil {
+					log.Fatalf("write: %s", err.Error())
+				}
 			}
 		}()
 
