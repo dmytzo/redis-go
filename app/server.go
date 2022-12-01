@@ -35,15 +35,16 @@ func main() {
 
 		c.SetReadDeadline(time.Now().Add(10 * time.Second))
 
-		content := make([]byte, 1024)
-		if _, err := c.Read(content); err != nil {
-			log.Fatalf("read: %s", err.Error())
+		go func() {
+			content := make([]byte, 1024)
+			if _, err := c.Read(content); err != nil {
+				log.Fatalf("read: %s", err.Error())
+			}
 
-		}
-
-		if _, err := c.Write(strb("PONG")); err != nil {
-			log.Fatalf("write: %s", err.Error())
-		}
+			if _, err := c.Write(strb("PONG")); err != nil {
+				log.Fatalf("write: %s", err.Error())
+			}
+		}()
 
 		//if err := c.Close(); err != nil {
 		//	log.Fatalf("close: %s", err.Error())
