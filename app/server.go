@@ -34,7 +34,6 @@ func main() {
 		}
 
 		go func() {
-
 			for {
 				buf := make([]byte, 1024)
 				if _, err := c.Read(buf); err != nil {
