@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -21,6 +22,8 @@ const (
 	SignRespBulkString = '$'
 
 	SignString = "+"
+
+	RespNull = "$-1\r\n"
 )
 
 func main() {
@@ -33,7 +36,12 @@ func main() {
 
 	defer l.Close()
 
-	storage := map[string]string{}
+	type v struct {
+		value      string
+		validUntil time.Time
+	}
+
+	storage := map[string]v{}
 
 	for {
 		c, err := l.Accept()
@@ -71,14 +79,40 @@ func main() {
 						continue
 					}
 
-					storage[commands[1]] = commands[2]
+					value := v{
+						value: commands[2],
+					}
+
+					if len(commands) == 5 && strings.ToUpper(commands[3]) == "PX" {
+						ms, err := strconv.Atoi(commands[4])
+						if err != nil {
+							log.Printf("error: %s\n", err.Error())
+
+							continue
+						}
+						value.validUntil = time.Now().Add(time.Duration(ms) * time.Millisecond)
+					}
+
+					storage[commands[1]] = value
 					resp = "OK"
 				case CommandGET:
 					if len(commands) < 2 {
 						continue
 					}
 
-					resp = storage[commands[1]]
+					value, ok := storage[commands[1]]
+					if !ok {
+						continue
+					}
+
+					resp = value.value
+					if !value.validUntil.IsZero() && time.Now().After(value.validUntil) {
+						delete(storage, commands[1])
+						if _, err := c.Write([]byte(RespNull)); err != nil {
+							log.Fatalf("write: %s", err.Error())
+						}
+						continue
+					}
 				}
 
 				if _, err := c.Write(strb(resp)); err != nil {
